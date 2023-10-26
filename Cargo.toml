@@ -1,0 +1,27 @@
+[package]
+name = "det_publisher"
+version = "0.0.1"
+edition = "2018"
+authors = ["RonyG"]
+
+description = "based on Examples of minimal publisher nodes"
+repository = "https://github.com/rclrust/rclrust-examples"
+license = "Apache-2.0"
+
+[dependencies]
+anyhow = "1.0"
+rclrust = { git = "https://github.com/rclrust/rclrust.git" }
+rclrust-msg = { git = "https://github.com/rclrust/rclrust.git" }
+tokio = { version = "1", features = ["full"] }
+
+# Camera and Detect
+rscam = "0.5.5"
+image = "0.24.6"
+ndarray = "0.15.6"
+ort = "1.14.6"
+serde = "1.0.84"
+serde_derive = "1.0.84"
+serde_json = "1.0.36"
+rocket = "=0.5.0-rc.3"
+
+#
