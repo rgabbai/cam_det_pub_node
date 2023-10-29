@@ -37,7 +37,7 @@ impl UsbCamera {
         Self{ camera , config}
     }
     // Capture a frame and save it to a File
-    pub fn take_pic(&self) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn take_pic(&self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         for _ in 0..3 {
             let _ = self.camera.capture(); // Grab a frame to reduce delay.
         }
@@ -46,8 +46,11 @@ impl UsbCamera {
         // Save the original image to the specified file path.
         let mut file = fs::File::create(self.config.path.clone())?;
         file.write_all(&frame[..])?;
+        let frame_vector = frame.to_vec();
+        let mut file = fs::File::create("test_image.jpg")?;
+        file.write_all(&frame_vector)?;
 
-        Ok(())
+        Ok(frame.to_vec())
     }
 
 }
