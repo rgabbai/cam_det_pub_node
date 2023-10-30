@@ -17,9 +17,12 @@ use rclrust_msg::sensor_msgs::msg::CompressedImage as CompressedImageMsg;
 
 pub mod camera;
 pub mod obj_detect;
+pub mod estimation;
 
 const TOPIC_NAME: &str = "detect";
-
+const FPS: u64 = 1; // Frames per second
+const SECONDS_PER_MINUTE: u64 = 60;
+const MILLISECONDS_PER_SECOND: u64 = 1000;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct BoxCor(f32, f32, f32, f32);
@@ -29,12 +32,14 @@ struct DetObj {
     box_location: BoxCor,
     otype: String,
     prob: f32,
+    dist: f64,
 }
 
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     println!("Detect publisher node start");
+        
     // take a pic
     let cam = camera::UsbCamera::new();
     //let mut detect_res :String = String::new();
@@ -49,8 +54,10 @@ async fn main() -> anyhow::Result<()> {
     let image_publisher = node.create_publisher::<CompressedImageMsg>("Compressed_camera_image", &QoSProfile::default())?;
 
 
+    let period_ms: u64 = MILLISECONDS_PER_SECOND / FPS;
+    println!(">FPS:{FPS} period [ms]:{period_ms}");
 
-    let _timer = node.create_wall_timer(Duration::from_millis(1000), move || {
+    let _timer = node.create_wall_timer(Duration::from_millis(period_ms), move || {
         count.fetch_add(1, Ordering::Relaxed);
 
         
@@ -63,9 +70,9 @@ async fn main() -> anyhow::Result<()> {
             }
         };
         // TODO do msg conversion it in parallel to detection stage
-
-        //let image_height = 360; // Static value for simplicity; adjust as needed
-        //let image_width = 640;  // Static value for simplicity; adjust as needed
+        
+        // ROS publisher section
+        // Send MSG Topic of type: CompressedImageMsg
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .expect("Time went backwards");
@@ -91,18 +98,24 @@ async fn main() -> anyhow::Result<()> {
             Err(e) => eprintln!("Failed to publish image: {}", e),
         };
 
-        // Detect
+        // Detect stage
         println!("Detection starts!");
         let detect_res = obj_detect::detect("image.jpg");
         //process string to DetObj format
 
         let mut detected_objects: Vec<DetObj> = Vec::new();
+        // Estimate Pylon distance in cm 
+        // Given data points
+
 
         for detection in &detect_res {
+            let pixel_height:f64 = (detection.3 - detection.1).into(); 
+            println!("Pixel hieght:{}",pixel_height);
             let obj = DetObj {
                 box_location: BoxCor(detection.0, detection.1, detection.2, detection.3),
                 otype: detection.4.to_string(),
                 prob: detection.5,
+                dist: estimation::estimate_distance(pixel_height),
             };
             detected_objects.push(obj);
         }
@@ -114,11 +127,21 @@ async fn main() -> anyhow::Result<()> {
                 return;  // Don't proceed if serialization fails
             }
         };
+        
+ 
 
-        let message = String_ {
+        // Publish detection data 
+        
+        let mut  message = String_ {
             //data: format!("{:?} {}",detect_res,count.load(Ordering::Relaxed)),
             data: serialized_data,
         };
+        // Check if detection found something otherwise send nothing found msg msg 
+        if message.data == "[]" {
+            //println!("No detection");
+            message.data = "[{\"box_location\":[0.0,0.0,0.0,0.0],\"otype\":\"nothing\",\"prob\":1.0,\"dist\":0.0}]".to_string();
+        }
+
         rclrust_info!(logger, "Publishing: '{}'", message.data);
         publisher.publish(&message).unwrap();
     })?;

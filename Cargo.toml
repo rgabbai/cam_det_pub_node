@@ -23,5 +23,6 @@ serde = "1.0.84"
 serde_derive = "1.0.84"
 serde_json = "1.0.36"
 rocket = "=0.5.0-rc.3"
-
+nalgebra = "0.29"
+statrs = "0.14"
 #

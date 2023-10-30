@@ -4,7 +4,7 @@ use ndarray::{Array, IxDyn, s, Axis};
 use ort::{Environment,SessionBuilder,Value};
 use std::time::Instant;
 
-
+const PROB_TH: f32 = 0.3;
 const MODEL: &str = "./roktrack_yolov8_nano_fixed_640_640.onnx";
 // Array of YOLOv8 class labels
 const YOLO_CLASSES:[&str;3] = [
@@ -15,7 +15,7 @@ const YOLO_CLASSES:[&str;3] = [
 pub fn detect(file_name: &str)  -> Vec<(f32,f32,f32,f32,&'static str,f32)> {
     let buf = std::fs::read(file_name).unwrap_or(vec![]);
     let boxes = detect_objects_on_image(buf);
-    println!("Result: {:?}",boxes);
+    //println!("Result: {:?}",boxes);
     return boxes;
 }
 
@@ -93,7 +93,7 @@ fn process_output(output:Array<f32,IxDyn>,img_width: u32, img_height: u32) -> Ve
         let (class_id, prob) = row.iter().skip(4).enumerate()
             .map(|(index,value)| (index,*value))
             .reduce(|accum, row| if row.1>accum.1 { row } else {accum}).unwrap(); 
-        if prob < 0.5 {
+        if prob < PROB_TH {
             continue
         }
         //println!("Row: {:?}",row);
