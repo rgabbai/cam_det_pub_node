@@ -46,9 +46,10 @@ impl UsbCamera {
         // Save the original image to the specified file path.
         let mut file = fs::File::create(self.config.path.clone())?;
         file.write_all(&frame[..])?;
-        let frame_vector = frame.to_vec();
-        let mut file = fs::File::create("test_image.jpg")?;
-        file.write_all(&frame_vector)?;
+        // See if I can convert vector back to image
+        //let frame_vector = frame.to_vec();
+        //let mut file = fs::File::create("test_image.jpg")?;
+        //file.write_all(&frame_vector)?;
 
         Ok(frame.to_vec())
     }

@@ -15,7 +15,7 @@ const YOLO_CLASSES:[&str;3] = [
 pub fn detect(file_name: &str)  -> Vec<(f32,f32,f32,f32,&'static str,f32)> {
     let buf = std::fs::read(file_name).unwrap_or(vec![]);
     let boxes = detect_objects_on_image(buf);
-    //println!("Result: {:?}",boxes);
+    println!("Result: {:?}",boxes);
     return boxes;
 }
 
@@ -26,6 +26,7 @@ pub fn detect(file_name: &str)  -> Vec<(f32,f32,f32,f32,&'static str,f32)> {
 // Returns Array of bounding boxes in format [(x1,y1,x2,y2,object_type,probability),..]
 fn detect_objects_on_image(buf: Vec<u8>) -> Vec<(f32,f32,f32,f32,&'static str,f32)> {
     let (input,img_width,img_height) = prepare_input(buf);
+    println!("Pre Runnning inf call");
     let output = run_model(input);
     return process_output(output, img_width, img_height);
 }
@@ -56,8 +57,11 @@ fn prepare_input(buf: Vec<u8>) -> (Array<f32,IxDyn>, u32, u32) {
 // Returns raw output of YOLOv8 network as a single dimension
 // array
 fn run_model(input:Array<f32,IxDyn>) -> Array<f32,IxDyn> {
+    println!("Pre Runnning inf env ");
     let env = Arc::new(Environment::builder().with_name("YOLOv8").build().unwrap());
+    println!("Pre Runnning inf prepare model");
     let model = SessionBuilder::new(&env).unwrap().with_model_from_file(MODEL).unwrap();
+    println!("Pre Runnning inf prepare input");
     let input_as_values = &input.as_standard_layout();
     //println!("Original array:\n{:?}", input);
     let model_inputs = vec![Value::from_array(model.allocator(), input_as_values).unwrap()];
@@ -65,10 +69,10 @@ fn run_model(input:Array<f32,IxDyn>) -> Array<f32,IxDyn> {
     
     // Measure the time taken for inference
     let start_time = Instant::now();
-    
+    println!("Pre Runnning inf run model ");
     let outputs = model.run(model_inputs).unwrap();
-    
-    // Calculate the elapsed time
+    println!("Pre Runnning inf results {:?}",outputs);
+    // Calculate the elapsed time   
     let elapsed_time = start_time.elapsed();
     println!("Inference took: {:?}", elapsed_time);
 
