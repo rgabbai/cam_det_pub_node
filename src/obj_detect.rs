@@ -4,7 +4,7 @@ use ndarray::{Array, IxDyn, s, Axis};
 use ort::{Environment,SessionBuilder,Value};
 use std::time::Instant;
 
-const PROB_TH: f32 = 0.3;
+const PROB_TH: f32 = 0.2;
 const MODEL: &str = "./roktrack_yolov8_nano_fixed_640_640.onnx";
 // Array of YOLOv8 class labels
 const YOLO_CLASSES:[&str;3] = [
