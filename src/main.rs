@@ -70,7 +70,7 @@ async fn main() -> anyhow::Result<()> {
     let image_publisher = node.create_publisher::<CompressedImageMsg>("Compressed_camera_image", &QoSProfile::default())?;
 
 
-    let period_ms: u64 = (MILLISECONDS_PER_SECOND / FPS).round() as u64;
+    let period_ms: u64 = (MILLISECONDS_PER_SECOND / fps).round() as u64;
     println!(">FPS:{FPS} period [ms]:{period_ms}");
 
     let _timer = node.create_wall_timer(Duration::from_millis(period_ms), move || {
