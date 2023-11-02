@@ -2,6 +2,8 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
     time::{SystemTime,Duration},
 };
+use std::env;
+use std::process;
 
 use rclrust::{qos::QoSProfile, rclrust_info};
 use rclrust_msg::std_msgs::msg::String as String_;
@@ -39,7 +41,21 @@ struct DetObj {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     println!("Detect publisher node start");
-        
+    let args: Vec<String> = env::args().collect();
+    let mut fps: f32 = 0.5;
+    //println!("{:?}", args);
+
+    if args.len() > 1 {
+        println!("requested fps is: {}", args[1]);
+        match args[1].parse::<f32>() {
+            Ok(value) => fps = value,
+            Err(_) => println!("Failed to convert fps to f32"),
+        }
+
+    } else {
+        println!("No arguments provided.");
+        process::exit(1); // Exits the program with a status code of 1
+    }
     // take a pic
     let cam = camera::UsbCamera::new();
     //let mut detect_res :String = String::new();
