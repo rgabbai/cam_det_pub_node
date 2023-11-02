@@ -99,7 +99,7 @@ async fn main() -> anyhow::Result<()> {
         };
 
         // Detect stage
-        println!("Detection starts!");
+        //println!("Detection starts!");
         let detect_res = obj_detect::detect("image.jpg");
         //process string to DetObj format
 
@@ -110,7 +110,7 @@ async fn main() -> anyhow::Result<()> {
 
         for detection in &detect_res {
             let pixel_height:f64 = (detection.3 - detection.1).into(); 
-            println!("Pixel hieght:{}",pixel_height);
+            //println!("Pixel hieght:{}",pixel_height);
             let obj = DetObj {
                 box_location: BoxCor(detection.0, detection.1, detection.2, detection.3),
                 otype: detection.4.to_string(),
