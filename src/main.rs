@@ -20,9 +20,9 @@ pub mod obj_detect;
 pub mod estimation;
 
 const TOPIC_NAME: &str = "detect";
-const FPS: u64 = 1; // Frames per second
-const SECONDS_PER_MINUTE: u64 = 60;
-const MILLISECONDS_PER_SECOND: u64 = 1000;
+const FPS: f32 = 0.3; // Frames per second
+const SECONDS_PER_MINUTE: f32 = 60.0;
+const MILLISECONDS_PER_SECOND: f32 = 1000.0;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct BoxCor(f32, f32, f32, f32);
@@ -54,7 +54,7 @@ async fn main() -> anyhow::Result<()> {
     let image_publisher = node.create_publisher::<CompressedImageMsg>("Compressed_camera_image", &QoSProfile::default())?;
 
 
-    let period_ms: u64 = MILLISECONDS_PER_SECOND / FPS;
+    let period_ms: u64 = (MILLISECONDS_PER_SECOND / FPS).round() as u64;
     println!(">FPS:{FPS} period [ms]:{period_ms}");
 
     let _timer = node.create_wall_timer(Duration::from_millis(period_ms), move || {
