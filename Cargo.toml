@@ -10,7 +10,8 @@ license = "Apache-2.0"
 
 [dependencies]
 anyhow = "1.0"
-rclrust = { git = "https://github.com/rclrust/rclrust.git" }
+rclrust = { git = "https://github.com/rclrust/rclrust.git", features = ["foxy"]}
+rcl-sys = { git = "https://github.com/rclrust/rclrust.git", features = ["foxy"]}
 rclrust-msg = { git = "https://github.com/rclrust/rclrust.git" }
 tokio = { version = "1", features = ["full"] }
 
