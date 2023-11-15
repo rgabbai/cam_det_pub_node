@@ -21,7 +21,11 @@ pub struct UsbCamera {
 impl UsbCamera {
     //set the camera 
     pub fn new() -> Self {
-       let mut camera = Camera::new("/dev/video0").expect("Can't open the camera ");
+        // For Rockpi camera registered as video0
+       //let mut camera = Camera::new("/dev/video0").expect("Can't open the camera ");
+       // For asus - USB Camera is registered as video5  
+       let mut camera = Camera::new("/dev/video5").expect("Can't open the camera ");
+
         // start the camera
         camera.start(&Config {
           interval: (1,30),
