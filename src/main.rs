@@ -2,6 +2,9 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
     time::{SystemTime,Duration},
 };
+use image::{DynamicImage, GenericImageView, ImageOutputFormat};
+use std::io::Cursor;
+
 use std::env;
 use std::process;
 
@@ -86,7 +89,28 @@ async fn main() -> anyhow::Result<()> {
             }
         };
         // TODO do msg conversion it in parallel to detection stage
-        
+        // Load the image from the captured data
+        let img = match image::load_from_memory(&image_data) {
+            Ok(img) => img,
+            Err(e) => {
+                eprintln!("Failed to load image from memory: {}", e);
+                return; // Decide how to handle the error
+            }
+        };
+
+        // Resize the image to smaller size to save BW
+        let resized_img = img.resize_exact(320, 180, image::imageops::FilterType::Nearest);
+        // Convert the resized image back to a byte vector
+        let mut resized_data = Vec::new();
+        let mut cursor = Cursor::new(&mut resized_data);
+        match resized_img.write_to(&mut cursor, ImageOutputFormat::Jpeg(80)) { // use quality 80 - TODO check if can decrease/increase
+            Ok(_) => (),
+            Err(e) => {
+                eprintln!("Failed to write resized image to buffer: {}", e);
+                return; // Decide how to handle the error
+            }
+        }
+
         // ROS publisher section
         // Send MSG Topic of type: CompressedImageMsg
         let now = SystemTime::now()
@@ -104,7 +128,8 @@ async fn main() -> anyhow::Result<()> {
                 ..Default::default()
             },
             format: "jpeg".to_string(),  // For JPEG/MJPEG format
-            data: image_data,
+            //data: image_data,          //TODO keep for orig mode.
+            data: resized_data,
 
         };
 

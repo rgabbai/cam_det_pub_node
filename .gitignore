@@ -1,4 +1,5 @@
-/build
-/traget
-/log
-/install
+/build/*
+/target/*
+/log/*
+/install/*
+
