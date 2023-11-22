@@ -2,11 +2,12 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
     time::{SystemTime,Duration},
 };
-use image::{DynamicImage, GenericImageView, ImageOutputFormat};
+use image::{DynamicImage, GenericImageView, ImageOutputFormat,imageops::FilterType, ColorType};
 use std::io::Cursor;
 
 use std::env;
 use std::process;
+use clap::{App, Arg}; // handle arguments 
 
 use rclrust::{qos::QoSProfile, rclrust_info};
 use rclrust_msg::std_msgs::msg::String as String_;
@@ -44,10 +45,42 @@ struct DetObj {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     println!("Detect publisher node start");
+    let matches = App::new("ROS Node Tracker")
+    .version("1.0")
+    .author("Rony Gabbai")
+    .about("Camera & object detection pipe")
+    .arg(Arg::new("fps")
+         .short('f')
+         .long("fps")
+         .value_name("FPS")
+         .help("Sets the publish rate - fps")
+         .takes_value(true)
+         .required(false)
+         .default_value("0.5")
+         .validator(|v| v.parse::<f32>().map(|_| ()).map_err(|_| "FPS must be a float: between 0.0 - 1.0".to_string())))
+    .arg(Arg::new("mode")
+         .short('m')
+         .long("mode")
+         .value_name("MODE")
+         .help("Sets the mode: None,low,med or high BW (None: no image,low:320x180 BW  med:320x180 color image, high:640x360 color)")
+         .takes_value(true)
+         .required(false)
+         .default_value("high")  // Default FPS value
+         .possible_values(&["none","low", "med", "high"]))     
+    .arg(Arg::new("verbose")
+         .short('v')
+         .long("verbose")
+         .help("Sets verbosity on")
+         .takes_value(false)
+         .required(false))
+    .get_matches();
+
+
+    /*
     let args: Vec<String> = env::args().collect();
     let mut fps: f32 = 0.5;
     //println!("{:?}", args);
-
+    
     if args.len() > 1 {
         println!("requested fps is: {}", args[1]);
         match args[1].parse::<f32>() {
@@ -59,6 +92,17 @@ async fn main() -> anyhow::Result<()> {
         println!("No arguments provided.");
         process::exit(1); // Exits the program with a status code of 1
     }
+    */
+
+    let fps = matches.value_of("fps").unwrap().parse::<f32>().unwrap();
+    let mode = matches.value_of("mode").unwrap().to_string();
+    let verbose_mode = matches.is_present("verbose");
+
+
+    println!("FPS: {}", fps);
+    println!("Mode: {}", mode);
+    println!("Verbose mode is {}", if verbose_mode { "on" } else { "off" });
+
     // take a pic
     let cam = camera::UsbCamera::new();
     //let mut detect_res :String = String::new();
@@ -74,7 +118,7 @@ async fn main() -> anyhow::Result<()> {
 
 
     let period_ms: u64 = (MILLISECONDS_PER_SECOND / fps).round() as u64;
-    println!(">FPS:{FPS} period [ms]:{period_ms}");
+    println!(">FPS:{fps} period [ms]:{period_ms}");
 
     let _timer = node.create_wall_timer(Duration::from_millis(period_ms), move || {
         count.fetch_add(1, Ordering::Relaxed);
@@ -90,7 +134,7 @@ async fn main() -> anyhow::Result<()> {
         };
         // TODO do msg conversion it in parallel to detection stage
         // Load the image from the captured data
-        let img = match image::load_from_memory(&image_data) {
+        let mut img = match image::load_from_memory(&image_data) {
             Ok(img) => img,
             Err(e) => {
                 eprintln!("Failed to load image from memory: {}", e);
@@ -99,7 +143,30 @@ async fn main() -> anyhow::Result<()> {
         };
 
         // Resize the image to smaller size to save BW
-        let resized_img = img.resize_exact(320, 180, image::imageops::FilterType::Nearest);
+        let mut disble_image_publisher = false;
+        let mut image_x = 640;
+        let mut image_y = 360;
+
+        match mode.as_str() {
+            "none" => {
+                disble_image_publisher = true;
+            },
+            "low" => {
+                image_x = 320;
+                image_y = 180;
+                img = DynamicImage::ImageLuma8(img.to_luma8()) // Convert the image to grayscale for "low" mode
+            },
+            "med" => {
+                image_x = 320;
+                image_y = 180;
+            },
+            "high" => {
+            },
+            _ => unreachable!("Mode should be either 'none', 'med', low' or 'high'"), // This case should never happen 
+        }
+
+
+        let resized_img = img.resize_exact(image_x, image_y, image::imageops::FilterType::Nearest);
         // Convert the resized image back to a byte vector
         let mut resized_data = Vec::new();
         let mut cursor = Cursor::new(&mut resized_data);
@@ -135,13 +202,13 @@ async fn main() -> anyhow::Result<()> {
 
             // Publish the image
          match image_publisher.publish(&image_message) {
-            Ok(_) => rclrust_info!(logger, "Image published successfully."),
+            Ok(_) =>  {},//rclrust_info!(logger, "Image published successfully."),
             Err(e) => eprintln!("Failed to publish image: {}", e),
         };
 
         // Detect stage
         //println!("Detection starts!");
-        let detect_res = obj_detect::detect("image.jpg");
+        let detect_res = obj_detect::detect("image.jpg",verbose_mode);
         //process string to DetObj format
 
         let mut detected_objects: Vec<DetObj> = Vec::new();
@@ -182,8 +249,9 @@ async fn main() -> anyhow::Result<()> {
             //println!("No detection");
             message.data = "[{\"box_location\":[0.0,0.0,0.0,0.0],\"otype\":\"nothing\",\"prob\":1.0,\"dist\":0.0}]".to_string();
         }
-
-        rclrust_info!(logger, "Publishing: '{}'", message.data);
+        if verbose_mode {
+            rclrust_info!(logger, "Publishing: '{}'", message.data);
+        }
         publisher.publish(&message).unwrap();
     })?;
 

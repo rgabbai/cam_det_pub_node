@@ -4,6 +4,7 @@
 use rscam::{Camera, Config};
 use std::fs;
 use std::io::Write;
+use std::path::Path;
 
 
 pub struct CameraConfig {
@@ -18,13 +19,29 @@ pub struct UsbCamera {
     config: CameraConfig,
 }
 
+fn open_camera() -> Result<Camera, String> {
+    let device_paths = ["/dev/video5", "/dev/video0"]; // Add more paths if necessary
+
+    for path in &device_paths {
+        if Path::new(path).exists() {
+            match Camera::new(path) {
+                Ok(camera) => return Ok(camera),
+                Err(_) => continue,
+            }
+        }
+    }
+
+    Err("Unable to open camera on any of the provided device paths".to_string())
+}
+
 impl UsbCamera {
     //set the camera 
     pub fn new() -> Self {
         // For Rockpi camera registered as video0
        //let mut camera = Camera::new("/dev/video0").expect("Can't open the camera ");
        // For asus - USB Camera is registered as video5  
-       let mut camera = Camera::new("/dev/video5").expect("Can't open the camera ");
+       //let mut camera = Camera::new("/dev/video5").expect("Can't open the camera ");
+       let mut camera = open_camera().expect("Can't open the camera");
 
         // start the camera
         camera.start(&Config {

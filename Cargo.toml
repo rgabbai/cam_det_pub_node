@@ -14,6 +14,7 @@ rclrust = { git = "https://github.com/rclrust/rclrust.git", features = ["foxy"]}
 rcl-sys = { git = "https://github.com/rclrust/rclrust.git", features = ["foxy"]}
 rclrust-msg = { git = "https://github.com/rclrust/rclrust.git" }
 tokio = { version = "1", features = ["full"] }
+clap = "3.0"
 
 # Camera and Detect
 rscam = "0.5.5"
