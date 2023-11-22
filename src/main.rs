@@ -119,6 +119,23 @@ async fn main() -> anyhow::Result<()> {
 
     let period_ms: u64 = (MILLISECONDS_PER_SECOND / fps).round() as u64;
     println!(">FPS:{fps} period [ms]:{period_ms}");
+    match mode.as_str() {
+        "none" => {
+            println!("No debug image ");
+        },
+        "low" => {
+            println!("Black & white image 320x180");
+        },
+        "med" => {
+            println!("Color image 320x180");
+        },
+        "high" => {
+            println!("Color image 640x360");
+        },
+        _ => unreachable!("Mode should be either 'none', 'med', low' or 'high'"), // This case should never happen 
+    }
+
+
 
     let _timer = node.create_wall_timer(Duration::from_millis(period_ms), move || {
         count.fetch_add(1, Ordering::Relaxed);
