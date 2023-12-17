@@ -4,17 +4,23 @@ use ndarray::{Array, IxDyn, s, Axis};
 use ort::{Environment,SessionBuilder,Value};
 use std::time::Instant;
 
-const PROB_TH: f32 = 0.5;
-const MODEL: &str = "./roktrack_yolov8_nano_fixed_640_640.onnx";
+//const PROB_TH: f32 = 0.3;
+//const MODEL: &str = "./roktrack_yolov8_nano_fixed_640_640.onnx";
 // Array of YOLOv8 class labels
-const YOLO_CLASSES:[&str;3] = [
-    "pylon", "person", "roktrack" 
-];
+//const YOLO_CLASSES:[&str;3] = [
+//    "pylon", "person", "roktrack" 
+//];
+
+//const MODEL: &str = "./yolov8n_hen_bucket_cone_640.onnx";
+//const YOLO_CLASSES:[&str;3] = [
+//    "hen", "bucket", "cone" 
+//];
 
 
-pub fn detect(file_name: &str,verbose_mode:bool)  -> Vec<(f32,f32,f32,f32,&'static str,f32)> {
+pub fn detect(file_name: &str,verbose_mode:bool,model:&str,thr:f32)  -> Vec<(f32,f32,f32,f32,&'static str,f32)> {
     let buf = std::fs::read(file_name).unwrap_or(vec![]);
-    let boxes = detect_objects_on_image(buf,verbose_mode);
+
+    let boxes = detect_objects_on_image(buf,verbose_mode,model,thr);
     if verbose_mode {
         println!("Result: {:?}",boxes);
     }
@@ -26,11 +32,11 @@ pub fn detect(file_name: &str,verbose_mode:bool)  -> Vec<(f32,f32,f32,f32,&'stat
 // and returns an array of detected objects
 // and their bounding boxes
 // Returns Array of bounding boxes in format [(x1,y1,x2,y2,object_type,probability),..]
-fn detect_objects_on_image(buf: Vec<u8>,verbose_mode:bool) -> Vec<(f32,f32,f32,f32,&'static str,f32)> {
+fn detect_objects_on_image(buf: Vec<u8>,verbose_mode:bool,model:&str,thr:f32) -> Vec<(f32,f32,f32,f32,&'static str,f32)> {
     let (input,img_width,img_height) = prepare_input(buf);
     //println!("Pre Runnning inf call");
-    let output = run_model(input,verbose_mode);
-    return process_output(output, img_width, img_height);
+    let output = run_model(input, verbose_mode, model);
+    return process_output(output, img_width, img_height, model, thr);
 }
 
 // Function used to convert input image to tensor,
@@ -58,11 +64,23 @@ fn prepare_input(buf: Vec<u8>) -> (Array<f32,IxDyn>, u32, u32) {
 // YOLOv8 neural network and return result
 // Returns raw output of YOLOv8 network as a single dimension
 // array
-fn run_model(input:Array<f32,IxDyn>,verbose_mode:bool) -> Array<f32,IxDyn> {
+fn run_model(input:Array<f32,IxDyn>,verbose_mode:bool,ai_model:&str) -> Array<f32,IxDyn> {
     //println!("Pre Runnning inf env ");
+
+    let mut ai_model_name = " ";
+    match ai_model {
+        "A" => {
+            ai_model_name = "./yolov8n_hen_bucket_cone_640.onnx";
+        },
+        "B" => {
+            ai_model_name = "./roktrack_yolov8_nano_fixed_640_640.onnx";
+        },
+        _ => unreachable!("Mode should be either 'A' or 'B'"), // This case should never happen 
+    }
+
     let env = Arc::new(Environment::builder().with_name("YOLOv8").build().unwrap());
     //println!("Pre Runnning inf prepare model");
-    let model = SessionBuilder::new(&env).unwrap().with_model_from_file(MODEL).unwrap();
+    let model = SessionBuilder::new(&env).unwrap().with_model_from_file(ai_model_name.to_string()).unwrap();
     //println!("Pre Runnning inf prepare input");
     let input_as_values = &input.as_standard_layout();
     //println!("Original array:\n{:?}", input);
@@ -93,7 +111,18 @@ fn run_model(input:Array<f32,IxDyn>,verbose_mode:bool) -> Array<f32,IxDyn> {
 // of detected objects. Each object contain the bounding box of
 // this object, the type of object and the probability
 // Returns array of detected objects in a format [(x1,y1,x2,y2,object_type,probability),..]
-fn process_output(output:Array<f32,IxDyn>,img_width: u32, img_height: u32) -> Vec<(f32,f32,f32,f32,&'static str, f32)> {
+fn process_output(output:Array<f32,IxDyn>,img_width: u32, img_height: u32, model:&str, thr:f32) -> Vec<(f32,f32,f32,f32,&'static str, f32)> {
+
+    let mut yolo_class = [" "," "," "];
+    match model {
+        "A" => {
+            yolo_class = ["hen", "bucket", "cone"];
+        },
+        "B" => {
+            yolo_class = ["pylon", "person", "roktrack"];
+        },
+        _ => unreachable!("Mode should be either 'A' or 'B'"), // This case should never happen 
+    }
     let mut boxes = Vec::new();
     let output = output.slice(s![..,..,0]);
     for row in output.axis_iter(Axis(0)) {
@@ -103,12 +132,12 @@ fn process_output(output:Array<f32,IxDyn>,img_width: u32, img_height: u32) -> Ve
         let (class_id, prob) = row.iter().skip(4).enumerate()
             .map(|(index,value)| (index,*value))
             .reduce(|accum, row| if row.1>accum.1 { row } else {accum}).unwrap(); 
-        if prob < PROB_TH {
+        if prob < thr {
             continue
         }
         //println!("Row: {:?}",row);
         //println!("Class:{class_id}:{prob}");
-        let label = YOLO_CLASSES[class_id];
+        let label = yolo_class[class_id];
         let xc = row[0]/640.0*(img_width as f32);
         let yc = row[1]/640.0*(img_height as f32);
         let w = row[2]/640.0*(img_width as f32);

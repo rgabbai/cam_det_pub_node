@@ -17,5 +17,6 @@ const CM_IN_METER: f64 = 100.0;
 
 // Function to estimate distance using linear regression parameters -return distnce in [Meter]
 pub fn estimate_distance(pixel_height: f64) -> f64 {
-    ((A*pixel_height.powi(3)+B*pixel_height.powi(2)+C*pixel_height + D) / CM_IN_METER * 100.0).round() / 100.0
+    let dist=((A*pixel_height.powi(3)+B*pixel_height.powi(2)+C*pixel_height + D) / CM_IN_METER * 100.0).round() / 100.0;
+    dist
 }

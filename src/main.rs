@@ -58,6 +58,24 @@ async fn main() -> anyhow::Result<()> {
          .required(false)
          .default_value("0.5")
          .validator(|v| v.parse::<f32>().map(|_| ()).map_err(|_| "FPS must be a float: between 0.0 - 1.0".to_string())))
+    .arg(Arg::new("threshold")
+         .short('t')
+         .long("thr")
+         .value_name("THR")
+         .help("Sets the detection threshold. Defualt:0.4")
+         .takes_value(true)
+         .required(false)
+         .default_value("0.4")
+         .validator(|v| v.parse::<f32>().map(|_| ()).map_err(|_| "FPS must be a float: between 0.0 - 1.0".to_string())))
+    .arg(Arg::new("model")
+         .short('a')
+         .long("model")
+         .value_name("MODEL")
+         .help("Sets the AI model: A,B (A:yolov8n_hen_bucket_cone_640 B:roktrack_yolov8_nano_fixed_640_640)")
+         .takes_value(true)
+         .required(false)
+         .default_value("A")  
+         .possible_values(&["A","B"])) 
     .arg(Arg::new("mode")
          .short('m')
          .long("mode")
@@ -76,31 +94,18 @@ async fn main() -> anyhow::Result<()> {
     .get_matches();
 
 
-    /*
-    let args: Vec<String> = env::args().collect();
-    let mut fps: f32 = 0.5;
-    //println!("{:?}", args);
-    
-    if args.len() > 1 {
-        println!("requested fps is: {}", args[1]);
-        match args[1].parse::<f32>() {
-            Ok(value) => fps = value,
-            Err(_) => println!("Failed to convert fps to f32"),
-        }
-
-    } else {
-        println!("No arguments provided.");
-        process::exit(1); // Exits the program with a status code of 1
-    }
-    */
 
     let fps = matches.value_of("fps").unwrap().parse::<f32>().unwrap();
     let mode = matches.value_of("mode").unwrap().to_string();
+    let model = matches.value_of("model").unwrap().to_string();
+    let thr = matches.value_of("threshold").unwrap().parse::<f32>().unwrap();
     let verbose_mode = matches.is_present("verbose");
 
 
     println!("FPS: {}", fps);
     println!("Mode: {}", mode);
+    println!("Model: {}", model);
+    println!("Thr: {}",thr);
     println!("Verbose mode is {}", if verbose_mode { "on" } else { "off" });
 
     // take a pic
@@ -217,15 +222,17 @@ async fn main() -> anyhow::Result<()> {
 
         };
 
-            // Publish the image
-         match image_publisher.publish(&image_message) {
-            Ok(_) =>  {},//rclrust_info!(logger, "Image published successfully."),
-            Err(e) => eprintln!("Failed to publish image: {}", e),
+        // Publish the image
+        if !disble_image_publisher {
+            match image_publisher.publish(&image_message) {
+                Ok(_) =>  {},//rclrust_info!(logger, "Image published successfully."),
+                Err(e) => eprintln!("Failed to publish image: {}", e),
+            };
         };
 
         // Detect stage
         //println!("Detection starts!");
-        let detect_res = obj_detect::detect("image.jpg",verbose_mode);
+        let detect_res = obj_detect::detect("image.jpg",verbose_mode,&model,thr);
         //process string to DetObj format
 
         let mut detected_objects: Vec<DetObj> = Vec::new();
@@ -235,13 +242,13 @@ async fn main() -> anyhow::Result<()> {
 
         for detection in &detect_res {
             let pixel_height:f64 = (detection.3 - detection.1).into(); 
-            //println!("Pixel hieght:{}",pixel_height);
             let obj = DetObj {
                 box_location: BoxCor(detection.0, detection.1, detection.2, detection.3),
                 otype: detection.4.to_string(),
                 prob: detection.5,
                 dist: estimation::estimate_distance(pixel_height),
             };
+            //println!("Object:{:?} Pixel hieght:{}",obj.otype,pixel_height);
             detected_objects.push(obj);
         }
 
