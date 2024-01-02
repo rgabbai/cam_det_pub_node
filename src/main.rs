@@ -246,7 +246,7 @@ async fn main() -> anyhow::Result<()> {
                 box_location: BoxCor(detection.0, detection.1, detection.2, detection.3),
                 otype: detection.4.to_string(),
                 prob: detection.5,
-                dist: estimation::estimate_distance(pixel_height),
+                dist: estimation::estimate_distance(pixel_height,detection.4),
             };
             //println!("Object:{:?} Pixel hieght:{}",obj.otype,pixel_height);
             detected_objects.push(obj);

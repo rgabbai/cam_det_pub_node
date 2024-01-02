@@ -16,7 +16,21 @@ const CM_IN_METER: f64 = 100.0;
 
 
 // Function to estimate distance using linear regression parameters -return distnce in [Meter]
-pub fn estimate_distance(pixel_height: f64) -> f64 {
-    let dist=((A*pixel_height.powi(3)+B*pixel_height.powi(2)+C*pixel_height + D) / CM_IN_METER * 100.0).round() / 100.0;
+pub fn estimate_distance(pixel_height: f64, otype:&str) -> f64 {
+
+    //normalize height to cone height 
+    // TODO later on prepare constants per otype 
+    let mut normalized_pixel_height :f64 = 0.0;
+    match otype {
+        "cone"      =>  {normalized_pixel_height = pixel_height;}
+        "pylon"     =>  {normalized_pixel_height = pixel_height;}
+        "bucket"    =>  {normalized_pixel_height = pixel_height*2.3;}
+        "hen"       =>  {normalized_pixel_height = pixel_height*2.0;}
+        "nothing"   =>  {normalized_pixel_height = 0.0;}
+        _ => unreachable!("type not recognaized"), // This case should never happen 
+    }
+
+    //let dist=((A*pixel_height.powi(3)+B*pixel_height.powi(2)+C*pixel_height + D) / CM_IN_METER * 100.0).round() / 100.0;
+    let dist=((A*normalized_pixel_height.powi(3)+B*normalized_pixel_height.powi(2)+C*normalized_pixel_height + D) / CM_IN_METER * 100.0).round() / 100.0;
     dist
 }
