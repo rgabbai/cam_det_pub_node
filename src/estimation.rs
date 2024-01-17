@@ -26,6 +26,8 @@ pub fn estimate_distance(pixel_height: f64, otype:&str) -> f64 {
         "pylon"     =>  {normalized_pixel_height = pixel_height;}
         "bucket"    =>  {normalized_pixel_height = pixel_height*2.3;}
         "hen"       =>  {normalized_pixel_height = pixel_height*2.0;}
+	"person"    =>  {normalized_pixel_height = pixel_height/4.0;}
+	"roktrack"  =>  {normalized_pixel_height = 0.0;}
         "nothing"   =>  {normalized_pixel_height = 0.0;}
         _ => unreachable!("type not recognaized"), // This case should never happen 
     }
